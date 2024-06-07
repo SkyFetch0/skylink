@@ -6,10 +6,12 @@
 
 const char* ssid = "SSID";
 const char* password = "PASS";
-const char* host = "HOST";
+const char* host = "IPR";
+const char* auth_key = "AuthKEy";
+const char* container_key = "ContainerKEy";
 const uint16_t port = 65432;
 
-skylink skylink(host, port, "AUTH"); 
+skylink skylink(host, port, auth_key,container_key); 
 int lcdColumns = 16;
 int lcdRows = 2;
 int lcdAddr = 0x27;
@@ -18,6 +20,8 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 void setup() {
   Serial.begin(115200);
   lcd.init();
+  pinMode(D0, OUTPUT); // LED pinini çıkış olarak ayarla
+
   lcd.backlight();
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
@@ -31,27 +35,28 @@ void setup() {
 
 void loop() {
   if (skylink.isConnected()) {
-    skylink.sendData("STATUS D8");
-    String receivedDataD8 = skylink.receiveData();
+    String statusCommand = String("STATUS ") + container_key;
+    skylink.sendData(statusCommand.c_str());    
+    String receivedData = skylink.receiveData();
     
-    skylink.sendData("STATUS D7"); 
-    String receivedDataD7 = skylink.receiveData();
 
-    if (receivedDataD8 == "Invalid device" || receivedDataD7 == "Invalid device") {
+
+    if (receivedData == "Invalid device" || receivedData == "Invalid device") {
     } else {
+      digitalWrite(D0, skylink.getBool(receivedData,"D0")); // LED'i yak
+
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print(receivedDataD8);
+      lcd.print(skylink.getString(receivedData,"D8"));
       lcd.setCursor(0, 1);
-      lcd.print(receivedDataD7);
+      lcd.print(skylink.getString(receivedData,"D7"));
     }
 
-    Serial.println(receivedDataD8);
-    Serial.println(receivedDataD7);
+    Serial.println(skylink.getString(receivedData,"D7"));
   } else {
     Serial.println("Connection lost. Reconnecting...");
     skylink.connect();
   }
 
-  delay(300);
+  delay(200);
 }
