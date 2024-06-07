@@ -1,14 +1,25 @@
 #include <skylink/skylinkApi.h>
 
-skylink::skylink(const char* host, uint16_t port, const char* auth) 
-    : _host(host), _port(port), _auth(auth), _connected(false) {
+skylink::skylink(const char* host, uint16_t port, const char* auth, const char* container) 
+    : _host(host), _port(port), _auth(auth), _container(container), _connected(false) {
 }
 
 void skylink::connect() {
     if (_client.connect(_host, _port)) {
-        _client.print(_auth);  
-        if (_client.connected()) {
-            _connected = true;
+        String authMessage = "AUTH " + String(_auth) + " " + String(_container) + " \n";
+        Serial.println("Sending Auth Message: " + authMessage);
+
+        _client.print(authMessage);
+        delay(50); 
+        
+        if (_client.connected() && _client.available()) {
+            String response = _client.readStringUntil('\n');
+            if (response == "Authenticated") {
+                _connected = true;
+            } else {
+                _connected = false;
+                _client.stop();
+            }
         } else {
             _connected = false;
             _client.stop();
@@ -48,13 +59,13 @@ void skylink::getlcd(const char* pin) {
         _client.print(command);
 
         String data = receiveData();
-        String value = getPinValue(data, pin);
+        String value = getString(data, pin);
         Serial.println(value); 
     }
 }
 
-String skylink::getPinValue(const String& data, const String& pin) {
-    int start = data.indexOf(pin + ":");
+String skylink::getString(const String& data, const String& pin) {
+    int start = data.indexOf(pin + "=");
     if (start == -1) {
         return ""; 
     }
@@ -66,4 +77,28 @@ String skylink::getPinValue(const String& data, const String& pin) {
     }
 
     return data.substring(start, end);
+}
+bool skylink::getBool(const String& data, const String& pin) {
+    int start = data.indexOf(pin + "=");
+    if (start == -1) {
+        return false; 
+    }
+
+    start += pin.length() + 1;
+    int end = data.indexOf(',', start);
+    if (end == -1) {
+        end = data.length(); 
+    }
+
+    String value = data.substring(start, end);
+    value.trim(); 
+
+    if (value.equalsIgnoreCase("ON") ||
+        value.equalsIgnoreCase("on") ||
+        value.equalsIgnoreCase("true") ||
+        value == "1") {
+        return true;
+    } else {
+        return false;
+    }
 }

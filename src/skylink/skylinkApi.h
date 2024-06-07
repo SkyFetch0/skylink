@@ -15,7 +15,7 @@
 
 class skylink {
   public:
-    skylink(const char* host, uint16_t port, const char* auth);
+    skylink(const char* host, uint16_t port, const char* auth, const char* container);
     
     void connect();
     void disconnect();
@@ -23,12 +23,15 @@ class skylink {
     void sendData(const char* data);
     String receiveData();
     void getlcd(const char* pin); 
-    String getPinValue(const String& data, const String& pin); 
-  
+    String getString(const String& data, const String& pin); 
+    bool getBool(const String& data, const String& pin); 
+
   private:
     const char* _host;
     uint16_t _port;
     const char* _auth; 
+    const char* _container; 
+
     WiFiClient _client;
     bool _connected;
 };
